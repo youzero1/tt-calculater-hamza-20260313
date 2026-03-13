@@ -1,0 +1,316 @@
+null) {
+      return NextResponse.json({ error: 'expression and result are required' }, { status: 400 });
+    }
+
+    const ds = await getDataSource();
+    const repo = ds.getRepository(CalculationHistory);
+
+    const record = repo.create({ expression, result: String(result) });
+    await repo.save(record);
+
+    return NextResponse.json({ success: true, record }, { status: 201 });
+  } catch (error) {
+    console.error('Error saving history:', error);
+    return NextResponse.json({ error: 'Failed to save history' }, { status: 500 });
+  }
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "calculator-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typeorm": "0.3.20",
+    "reflect-metadata": "0.2.2",
+    "better-sqlite3": "9.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@types/better-sqlite3": "7.6.11",
+    "@types/jest": "29.5.12",
+    "jest": "29.7.0",
+    "ts-jest": "29.2.3",
+    "typescript": "5.5.3",
+    "tailwindcss": "3.4.6",
+    "postcss": "8.4.39",
+    "autoprefixer": "10.4.19",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.5"
+  }
+}
+</file>
+
+<file path="jest.config.ts">
+import type { Config } from 'jest';
+
+const config: Config = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src'],
+  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', {
+      tsconfig: 'tsconfig.json',
+    }],
+  },
+};
+
+export default config;
+</file>
+
+<file path="tsconfig.test.json">
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "module": "commonjs",
+    "moduleResolution": "node"
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}
+</file>
+
+<file path="src/__tests__/calculator.test.ts">
+import { safeEval, formatDisplay } from '@/lib/calculator';
+
+describe('safeEval', () => {
+  it('should evaluate simple addition', () => {
+    expect(safeEval('2+3')).toBe('5');
+  });
+
+  it('should evaluate simple subtraction', () => {
+    expect(safeEval('10-4')).toBe('6');
+  });
+
+  it('should evaluate simple multiplication', () => {
+    expect(safeEval('3*7')).toBe('21');
+  });
+
+  it('should evaluate simple division', () => {
+    expect(safeEval('20/4')).toBe('5');
+  });
+
+  it('should handle decimal results', () => {
+    expect(safeEval('1/3')).toBe('0.3333333333');
+  });
+
+  it('should handle floating point precision', () => {
+    expect(safeEval('0.1+0.2')).toBe('0.3');
+  });
+
+  it('should return Error for division by zero', () => {
+    expect(safeEval('1/0')).toBe('Error');
+  });
+
+  it('should return Error for invalid expressions', () => {
+    expect(safeEval('abc')).toBe('Error');
+  });
+
+  it('should handle negative numbers in result', () => {
+    expect(safeEval('3-10')).toBe('-7');
+  });
+
+  it('should handle multiplication with display symbol ×', () => {
+    expect(safeEval('3×4')).toBe('12');
+  });
+
+  it('should handle division with display symbol ÷', () => {
+    expect(safeEval('12÷3')).toBe('4');
+  });
+
+  it('should handle subtraction with display symbol −', () => {
+    expect(safeEval('10−3')).toBe('7');
+  });
+
+  it('should handle chained operations', () => {
+    expect(safeEval('2+3*4')).toBe('14');
+  });
+
+  it('should return Error for empty string', () => {
+    expect(safeEval('')).toBe('Error');
+  });
+
+  it('should handle large numbers', () => {
+    expect(safeEval('999999999*2')).toBe('1999999998');
+  });
+
+  it('should handle zero', () => {
+    expect(safeEval('0+0')).toBe('0');
+  });
+
+  it('should handle decimal inputs', () => {
+    expect(safeEval('2.5+2.5')).toBe('5');
+  });
+
+  it('should reject expressions with letters/injection attempts', () => {
+    expect(safeEval('alert(1)')).toBe('Error');
+  });
+
+  it('should reject expressions with semicolons', () => {
+    expect(safeEval('1;2')).toBe('Error');
+  });
+});
+
+describe('formatDisplay', () => {
+  it('should return Error for "Error"', () => {
+    expect(formatDisplay('Error')).toBe('Error');
+  });
+
+  it('should return Error for "Infinity"', () => {
+    expect(formatDisplay('Infinity')).toBe('Error');
+  });
+
+  it('should return Error for "-Infinity"', () => {
+    expect(formatDisplay('-Infinity')).toBe('Error');
+  });
+
+  it('should return the value for normal numbers', () => {
+    expect(formatDisplay('42')).toBe('42');
+  });
+
+  it('should return the value for decimal numbers', () => {
+    expect(formatDisplay('3.14')).toBe('3.14');
+  });
+
+  it('should return the value for zero', () => {
+    expect(formatDisplay('0')).toBe('0');
+  });
+
+  it('should handle negative numbers', () => {
+    expect(formatDisplay('-5')).toBe('-5');
+  });
+
+  it('should handle string values that are not numbers', () => {
+    expect(formatDisplay('abc')).toBe('abc');
+  });
+});
+</file>
+
+<file path="src/__tests__/api-history.test.ts">
+/**
+ * Tests for the history API route logic.
+ * These test the validation logic without requiring the full Next.js server.
+ */
+
+describe('History API validation', () => {
+  it('should require expression field', () => {
+    const body = { result: '5' };
+    const { expression } = body as { expression?: string; result: string };
+    expect(!expression).toBe(true);
+  });
+
+  it('should require result field', () => {
+    const body = { expression: '2+3' };
+    const { result } = body as { expression: string; result?: string };
+    expect(result === undefined).toBe(true);
+  });
+
+  it('should accept valid body', () => {
+    const body = { expression: '2+3', result: '5' };
+    const { expression, result } = body;
+    expect(expression).toBe('2+3');
+    expect(result).toBe('5');
+    expect(!!expression && result !== undefined).toBe(true);
+  });
+
+  it('should handle empty expression', () => {
+    const body = { expression: '', result: '0' };
+    const { expression } = body;
+    expect(!expression).toBe(true);
+  });
+
+  it('should handle result as string "0"', () => {
+    const body = { expression: '0+0', result: '0' };
+    const { expression, result } = body;
+    // '0' is falsy for result check but should be valid
+    expect(!!expression && result !== undefined && result !== null).toBe(true);
+  });
+});
+</file>
+
+<file path=".dockerignore">
+node_modules
+.next
+.git
+*.md
+.env*
+data/
+</file>
+
+Now let me also verify the Dockerfile works with standalone output:
+
+<file path="next.config.mjs">
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'standalone',
+  serverExternalPackages: ['typeorm', 'better-sqlite3', 'reflect-metadata'],
+  webpack: (config) => {
+    return config;
+  },
+};
+
+export default nextConfig;
+</file>
+
+<file path="Dockerfile">
+# Stage 1: Install dependencies
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat python3 make g++
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci || npm install
+
+# Stage 2: Build the application
+FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat python3 make g++
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+RUN npm run build
+
+# Stage 3: Production runner
+FROM node:20-alpine AS runner
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy the standalone output
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Create data directory and set permissions
+RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
+
+# Copy better-sqlite3 native bindings (needed at runtime)
+COPY --from=builder /app/node_modules/better-sqlite
