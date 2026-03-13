@@ -1,0 +1,45 @@
+null) return;
+    if (waitingForOperand) return;
+
+    const current = display;
+    const expr = prevValue + operator + current;
+    const result = safeEval(expr);
+
+    const humanExpr = fullExpression + current;
+    setFullExpression(humanExpr + ' =');
+    setDisplay(result);
+    setPrevValue(null);
+    setOperator(null);
+    setWaitingForOperand(false);
+    setJustEvaluated(true);
+
+    if (result !== 'Error') {
+      await saveHistory(humanExpr, result);
+      if (showHistory) await fetchHistory();
+    }
+  }, [display, operator, prevValue, waitingForOperand, fullExpression, saveHistory, showHistory, fetchHistory]);
+
+  const handleClear = useCallback(() => {
+    setDisplay('0');
+    setExpression('');
+    setOperator(null);
+    setPrevValue(null);
+    setWaitingForOperand(false);
+    setFullExpression('');
+    setJustEvaluated(false);
+  }, []);
+
+  const handleBackspace = useCallback(() => {
+    if (justEvaluated) {
+      handleClear();
+      return;
+    }
+    if (display.length > 1) {
+      setDisplay(display.slice(0, -1));
+    } else {
+      setDisplay('0');
+    }
+  }, [display, justEvaluated, handleClear]);
+
+  const handleToggleSign = useCallback(() => {
+    if (display
