@@ -1,0 +1,41 @@
+'Error') return;
+    if (display.startsWith('-')) {
+      setDisplay(display.slice(1));
+    } else {
+      setDisplay('-' + display);
+    }
+  }, [display]);
+
+  const handlePercent = useCallback(() => {
+    const num = parseFloat(display);
+    if (isNaN(num)) return;
+    const result = String(Math.round((num / 100) * 1e10) / 1e10);
+    setDisplay(result);
+  }, [display]);
+
+  const handleHistoryClick = useCallback((record: HistoryRecord) => {
+    setDisplay(record.result);
+    setJustEvaluated(true);
+    setFullExpression(record.expression + ' =');
+    setPrevValue(null);
+    setOperator(null);
+    setWaitingForOperand(false);
+  }, []);
+
+  // Keyboard support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') {
+        handleDigit(e.key);
+      } else if (e.key === '.') {
+        handleDigit('.');
+      } else if (e.key === '+') {
+        handleOperator('+');
+      } else if (e.key === '-') {
+        handleOperator('-');
+      } else if (e.key === '*') {
+        handleOperator('*');
+      } else if (e.key === '/') {
+        e.preventDefault();
+        handleOperator('/');
+      } else if (e.key
