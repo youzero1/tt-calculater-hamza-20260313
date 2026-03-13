@@ -1,0 +1,111 @@
+'-Infinity') return 'Error';
+  const num = parseFloat(value);
+  if (isNaN(num)) return value;
+  return value;
+}
+</file>
+
+<file path="src/app/page.tsx">
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { safeEval, formatDisplay } from '@/lib/calculator';
+
+interface HistoryRecord {
+  id: number;
+  expression: string;
+  result: string;
+  createdAt: string;
+}
+
+type CalcOperator = '+' | '-' | '*' | '/';
+
+export default function CalculatorPage() {
+  const [display, setDisplay] = useState<string>('0');
+  const [, setExpression] = useState<string>('');
+  const [operator, setOperator] = useState<CalcOperator | null>(null);
+  const [prevValue, setPrevValue] = useState<string | null>(null);
+  const [waitingForOperand, setWaitingForOperand] = useState<boolean>(false);
+  const [fullExpression, setFullExpression] = useState<string>('');
+  const [justEvaluated, setJustEvaluated] = useState<boolean>(false);
+
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch('/api/history');
+      const data = await res.json();
+      if (data.history) setHistory(data.history);
+    } catch (e) {
+      console.error('Failed to fetch history', e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const saveHistory = useCallback(async (expr: string, result: string) => {
+    try {
+      await fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expression: expr, result }),
+      });
+    } catch (e) {
+      console.error('Failed to save history', e);
+    }
+  }, []);
+
+  const handleDigit = useCallback((digit: string) => {
+    if (waitingForOperand || justEvaluated) {
+      setDisplay(digit);
+      setWaitingForOperand(false);
+      setJustEvaluated(false);
+    } else {
+      if (display === '0' && digit !== '.') {
+        setDisplay(digit);
+      } else if (digit === '.' && display.includes('.')) {
+        return;
+      } else {
+        setDisplay(display + digit);
+      }
+    }
+  }, [display, waitingForOperand, justEvaluated]);
+
+  const handleOperator = useCallback((op: CalcOperator) => {
+    const current = display;
+
+    if (justEvaluated) {
+      setFullExpression(current + ' ' + op + ' ');
+      setPrevValue(current);
+      setOperator(op);
+      setWaitingForOperand(true);
+      setJustEvaluated(false);
+      return;
+    }
+
+    if (operator && waitingForOperand) {
+      setOperator(op);
+      setFullExpression(fullExpression.slice(0, -3) + ' ' + op + ' ');
+      return;
+    }
+
+    if (prevValue !== null && operator && !waitingForOperand) {
+      const expr = prevValue + operator + current;
+      const result = safeEval(expr);
+      setDisplay(result);
+      setFullExpression(result + ' ' + op + ' ');
+      setPrevValue(result);
+    } else {
+      setFullExpression(current + ' ' + op + ' ');
+      setPrevValue(current);
+    }
+
+    setOperator(op);
+    setWaitingForOperand(true);
+  }, [display, operator, prevValue, waitingForOperand, fullExpression, justEvaluated]);
+
+  const handleEquals = useCallback(async () => {
+    if (operator
